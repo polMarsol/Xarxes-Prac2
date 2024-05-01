@@ -5,24 +5,24 @@ import java.net.Socket;
 public class Server {
     private static final int port = 1234;
     private static boolean clientConnectat = false; //  Variable per controlar si ja hi ha un client connectat
+    private static BooksDB booksdb;
+    private static DataOutputStream dos; // Añade esta línea
 
     public static void main(String[] args) {
         try {
             ServerSocket ss = new ServerSocket(port);
-
+            booksdb = new BooksDB("booksDB.dat");
             while (true) {
                 Socket s = ss.accept(); // Acceptar la connexió del client
-
+                dos = new DataOutputStream(s.getOutputStream());
                 if (!clientConnectat) { // Si no hi ha cap client connectat
                     clientConnectat = true; // Indicar que ara hi ha un client connectat
 
                     // Iniciar fils per gestionar la comunicació amb el client
-                    Thread tW = new Thread(new threadServerW(s));
                     Thread tR = new Thread(new threadServerR(s));
                     System.err.println("Connexió acceptada.");
 
                     tR.start(); // Iniciar-los
-                    tW.start();
                 } else {
                     // Si ja hi ha un client connectat, enviar un missatge indicant que el servidor no està disponible
                     DataOutputStream dos = new DataOutputStream(s.getOutputStream());
@@ -49,78 +49,111 @@ public class Server {
         public void run() {
             try {
                 DataInputStream dis = new DataInputStream(s.getInputStream());
-                DataOutputStream dos = new DataOutputStream(s.getOutputStream());
-                String str;
+                int str;
 
                 while (true) {
-                    str = dis.readUTF(); // Llegir el missatge del client
-                    if (str.equals("FI")) { // Si el client envia "FI", sortir del bucle
-                        System.out.println("Client: <<" + str + ">>");
-                        break;
-                    }
-                    System.out.println("Client: <<" + str + ">>");
-                    // Aquí puedes manejar las opciones del menú
+                    str = dis.readInt(); // Llegir el missatge del client
                     switch (str) {
-                        case "1":
+                        case 1:
                             // Llista tots els títols
-                            String titles = getBookTitles(); // Implementa este método para obtener los títulos de los libros
-                            dos.writeUTF(titles);
+                            listTitles();
                             break;
-                        case "2":
+                        case 2:
                             // Obté la informació d'un llibre
-                            String bookInfo = getBookInfo(); // Implementa este método para obtener la información de un libro
-                            dos.writeUTF(bookInfo);
+                            listInfoFromOneBook(dis);
                             break;
-                        case "3":
-                            // Afegeix un llibre
-                            addBook(); // Implementa este método para agregar un libro
-                            dos.writeUTF("Libro agregado correctamente.");
+                        case 3:
+                            addBook(dis, dos);
                             break;
-                        case "4":
-                            // Elimina un llibre
-                            deleteBook(); // Implementa este método para eliminar un libro
-                            dos.writeUTF("Libro eliminado correctamente.");
+                        case 4:
+                            deleteBook(dis, dos);
                             break;
-                        case "5":
+                        case 5:
+                            dis.close();
+                            s.close();
+                            clientConnectat = false; // Sortir del programa
+                            return;
                             // Sortir
-                            dos.writeUTF("Adiós!");
-                            break;
                         default:
                             // Opción no válida
-                            dos.writeUTF("Opción no válida.");
                             break;
                     }
-                    dos.flush();
                 }
-                dis.close();
-                dos.close();
-                s.close();
-                System.exit(0); // Sortir del programa
+
             } catch (IOException e) {
                 System.out.println("Connexió tancada.");
                 System.exit(0); // Sortir del programa
             }
         }
+
+        private void deleteBook(DataInputStream dis, DataOutputStream dos) {
+            try {
+                String title = dis.readUTF();
+                boolean borrat = booksdb.deleteByTitle(title);
+                dos.writeBoolean(borrat);
+            } catch (IOException ex) {
+                System.err.println("Database error!");
+            }
+        }
+
+        private void addBook(DataInputStream dis, DataOutputStream dos) {
+            try {
+                dos.writeUTF("Introdueix el títol del llibre: ");
+                String title = dis.readUTF();;
+                int numPages = dis.readInt();
+                dos.writeUTF("Introdueix l'autor del llibre (deixe'l buit si és anònim): ");
+                String author = dis.readUTF();
+                dos.writeUTF("Especifica la sèrie (buida si és un llibre solt): ");
+                String series = dis.readUTF();
+                BookInfo book = new BookInfo(title, numPages, author, series);
+                if(booksdb.insertNewBook(book)) {
+                    dos.writeUTF("Llibre afegit correctament.");
+                    dos.flush();
+                } else {
+                    dos.writeUTF("Aquest llibre ja estava a la base de dades.");
+                    dos.flush();
+                }
+
+            } catch (IOException ex) {
+                System.err.println("Database error!");
+            }
+        }
+
+        private void listInfoFromOneBook(DataInputStream dis) {
+            try {
+                String title = dis.readUTF();
+                int numTitles = booksdb.searchBookByTitle(title);
+                boolean exists;
+                if(numTitles != -1) {
+                    exists = true;
+                    dos.writeBoolean(exists);
+                    dos.flush();
+                    BookInfo book = booksdb.readBookInfo(numTitles);
+                    dos.writeUTF(book.toString());
+                    dos.flush();
+                } else {
+                    exists = false;
+                    dos.writeBoolean(exists);
+                    dos.flush();
+                }
+            } catch (IOException ex) {
+                System.err.println("Database error!");
+            }
+        }
     }
 
     // Thread per enviar dades al client
-    private static class threadServerW implements Runnable {
-        private final Socket s;
-
-        public threadServerW(Socket s) {
-            this.s = s;
-        }
-
-        public void run() {
-            try {
-                DataOutputStream dos = new DataOutputStream(s.getOutputStream());
-                dos.writeUTF("Connexió acceptada."); // Enviar missatge de connexió acceptada al client, tal
-                // i com hi ha en els exemples de la pràctica.
-                dos.writeUTF("Menú d'opcions:\n1 - Llista tots els títols.\n2 - Obté la informació d'un llibre.\n3 - Afegeix un llibre.\n4 - Elimina un llibre.\n5 - Sortir."); // Enviar el menú al client
-                dos.flush();
-            } catch (Exception e) {
-                System.exit(0); // Sortir del programa
+    private static void listTitles() {
+        try {
+            int numBooks = booksdb.getNumBooks();
+            dos.writeInt(numBooks);
+            for (int i = 0; i < numBooks; i++) {
+                BookInfo book = booksdb.readBookInfo (i);
+                dos.writeUTF(book.getTitle());
             }
+            dos.flush();
+        } catch (IOException ex) {
+            System.err.println ("Database error!");
         }
     }
 }
