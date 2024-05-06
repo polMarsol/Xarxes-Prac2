@@ -1,6 +1,9 @@
+
+
 package client;
 import java.io.*;
 import java.net.Socket;
+
 
 public class Client {
     private static final int port = 1234;
@@ -58,6 +61,7 @@ public class Client {
                                 deleteBook(dis, dos);
                                 break;
                             case 5:
+                                dos.writeUTF("Client desconnectat.");
                                 dos.close();
                                 dis.close();
                                 s.close();
@@ -74,6 +78,7 @@ public class Client {
         }
 
         private void deleteBook(DataInputStream dis, DataOutputStream dos) {
+
             try {
                 BufferedReader d = new BufferedReader(new InputStreamReader(System.in));
                 System.out.println("Introdueix el títol del llibre a eliminar: ");

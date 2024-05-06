@@ -1,5 +1,6 @@
 package client;
-public class BookInfo {
+import java.io.Serializable;
+public class BookInfo implements  Serializable {
 
 	private String  title;
 	private   int   pages;
