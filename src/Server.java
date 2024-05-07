@@ -16,14 +16,34 @@ public class Server {
                 Socket s = ss.accept(); // Acceptar la connexió del client
                 // Iniciar fils per gestionar la comunicació amb el client
                 Thread tR = new Thread(new threadServerR(s));
+                Thread tH = new Thread(new HeartbeatThread(new DataOutputStream(s.getOutputStream()))); // Nuevo hilo para el heartbeat
                 System.err.println("Connexió acceptada.");
                 tR.start(); // Iniciar-los
+                tH.start();
             }
         } catch (IOException e) {
             System.err.println("Servidor no disponible. Ja està en ús.");
         }
     }
+    private static class HeartbeatThread implements Runnable {
+        private final DataOutputStream dos;
 
+        public HeartbeatThread(DataOutputStream dos) {
+            this.dos = dos;
+        }
+
+        @Override
+        public void run() {
+            try {
+                while (true) {
+                    dos.writeUTF("HEARTBEAT");
+                    Thread.sleep(1000); // Enviar un heartbeat cada 5 segundos
+                }
+            } catch (IOException | InterruptedException e) {
+                // El servidor se ha cerrado o ha ocurrido un error
+            }
+        }
+    }
     // Thread per escoltar al client
     // Thread per escoltar al client
 // Thread per escoltar al client

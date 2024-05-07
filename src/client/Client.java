@@ -7,6 +7,29 @@ import java.net.SocketException;
 
 
 public class Client {
+    private static class HeartbeatListenerThread implements Runnable {
+        private final DataInputStream dis;
+
+        public HeartbeatListenerThread(DataInputStream dis) {
+            this.dis = dis;
+        }
+
+        @Override
+        public void run() {
+            try {
+                while (true) {
+                    String message = dis.readUTF();
+                    if (!"HEARTBEAT".equals(message)) {
+                        throw new IOException("Server has closed the connection.");
+                    }
+                    Thread.sleep(1200); // Esperar 6 segundos para el próximo heartbeat
+                }
+            } catch (IOException | InterruptedException e) {
+                System.out.println("Server has closed the connection.");
+                System.exit(0);
+            }
+        }
+    }
     private static final int port = 1234;
     private static String host = "127.0.0.1"; //  Adreça IP del servidor
     /*private static String host = "192.168.56.1";*/
@@ -16,8 +39,10 @@ public class Client {
         }
         try {
             Socket socket = new Socket(host, port); // Connectar-se al servidor
+            DataInputStream dis = new DataInputStream(socket.getInputStream());
             Thread tW = new Thread(new threadClientW(socket)); // Thread per enviar dades al servidor
-
+            Thread tH = new Thread(new HeartbeatListenerThread(dis)); // Nuevo hilo para escuchar el heartbeat
+            tH.start(); // Iniciar el hilo
             tW.start();
             tW.join(); // Esperar que acabin
 
