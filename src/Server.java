@@ -76,7 +76,7 @@ public class Server {
 
             } catch (IOException e) {
                 System.out.println("Connexió tancada.");
-                System.exit(0); // Sortir del programa
+/*                System.exit(0); // Sortir del programa*/
             }
         }
 

@@ -3,12 +3,13 @@
 package client;
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketException;
 
 
 public class Client {
     private static final int port = 1234;
-    /*private static String host = "127.0.0.1";*/ //  Adreça IP del servidor
-    private static String host = "192.168.56.1";
+    private static String host = "127.0.0.1"; //  Adreça IP del servidor
+    /*private static String host = "192.168.56.1";*/
     public static void main(String[] args) {
         if (args.length > 0) {
             host = args[0]; // Si s'especifica una adreça IP com a argument
@@ -25,6 +26,7 @@ public class Client {
         } catch (IOException | InterruptedException e) {
             System.err.println("Servidor no disponible."); // Manejar errors d'entrada/sortida o interrupcions
             // quan el servidor no està obert.
+            System.exit(0);
         }
     }
     private static class threadClientW implements Runnable {
@@ -75,7 +77,11 @@ public class Client {
                         }
                     }
                 }
-            } catch (Exception e) {
+            } catch (SocketException e) {
+                System.err.println("Servidor no disponible2.");
+                System.exit(0);
+            } catch (IOException e) {
+                System.err.println("Servidor no disponible1.");
                 System.exit(0);
             }
         }
@@ -166,10 +172,15 @@ public class Client {
         }
 
         private int getOption(String entrada, DataOutputStream dos) throws IOException {
-            int opcio = Integer.parseInt(entrada);
-            dos.writeInt(opcio);
-            dos.flush();
-            return opcio;
+            try {
+                int opcio = Integer.parseInt(entrada);
+                dos.writeInt(opcio);
+                dos.flush();
+                return opcio;
+            } catch (NumberFormatException e) {
+                System.out.println("Opció no vàlida.");
+                return -1;
+            }
         }
     }
     private static void printMenu() {
