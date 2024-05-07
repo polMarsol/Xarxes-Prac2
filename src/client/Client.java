@@ -78,10 +78,9 @@ public class Client {
                     }
                 }
             } catch (SocketException e) {
-                System.err.println("Servidor no disponible2.");
-                System.exit(0);
-            } catch (IOException e) {
                 System.err.println("Servidor no disponible1.");
+                System.exit(0);
+            } catch (Exception e) {
                 System.exit(0);
             }
         }
