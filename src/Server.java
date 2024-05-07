@@ -1,4 +1,4 @@
-
+import client.BookInfo;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -6,18 +6,15 @@ import java.net.Socket;
 
 public class Server {
     private static final int port = 1234;
-    private static boolean clientConnectat = false; //  Variable per controlar si ja hi ha un client connectat
+    //  Variable per controlar si ja hi ha un client connectat
     private static BooksDB booksdb;
-    private static DataOutputStream dos; // Añade esta línea
-
     public static void main(String[] args) {
         try {
             ServerSocket ss = new ServerSocket(port);
             booksdb = new BooksDB("booksDB.dat");
             while (true) {
                 Socket s = ss.accept(); // Acceptar la connexió del client
-                dos = new DataOutputStream(s.getOutputStream());
-                    // Iniciar fils per gestionar la comunicació amb el client
+                // Iniciar fils per gestionar la comunicació amb el client
                 Thread tR = new Thread(new threadServerR(s));
                 System.err.println("Connexió acceptada.");
                 tR.start(); // Iniciar-los
@@ -32,9 +29,13 @@ public class Server {
 // Thread per escoltar al client
     private static class threadServerR implements Runnable {
         private final Socket s;
+        private final DataOutputStream dos;
+        private final ObjectInputStream ois;
 
-        public threadServerR(Socket s) {
+        public threadServerR(Socket s) throws IOException {
             this.s = s;
+            this.dos = new DataOutputStream(s.getOutputStream());
+            this.ois = new ObjectInputStream(s.getInputStream());
         }
 
         public void run() {
@@ -47,14 +48,14 @@ public class Server {
                     switch (str) {
                         case 1:
                             // Llista tots els títols
-                            listTitles();
+                            listTitles(dos);
                             break;
                         case 2:
                             // Obté la informació d'un llibre
                             listInfoFromOneBook(dis);
                             break;
                         case 3:
-                            addBook(dis, dos);
+                            addBook(ois);
                             break;
                         case 4:
                             deleteBook(dis, dos);
@@ -63,8 +64,8 @@ public class Server {
                             String desconnectar = dis.readUTF();
                             System.out.println(desconnectar);
                             dis.close();
+                            dos.close();
                             s.close();
-                            clientConnectat = false; // Sortir del programa
                             return;
                         // Sortir
                         default:
@@ -80,6 +81,7 @@ public class Server {
         }
 
         private void deleteBook(DataInputStream dis, DataOutputStream dos) {
+            synchronized (booksdb) {
                 try {
                     String title = dis.readUTF();
                     boolean borrat = booksdb.deleteByTitle(title);
@@ -88,57 +90,55 @@ public class Server {
                     System.err.println("Database error!");
                 }
             }
+        }
 
 
-        private void addBook(DataInputStream dis, DataOutputStream dos) {
-                try {
-                    dos.writeUTF("Introdueix el títol del llibre: ");
-                    String title = dis.readUTF();;
-                    int numPages = dis.readInt();
-                    dos.writeUTF("Introdueix l'autor del llibre (deixe'l buit si és anònim): ");
-                    String author = dis.readUTF();
-                    dos.writeUTF("Especifica la sèrie (buida si és un llibre solt): ");
-                    String series = dis.readUTF();
-                    BookInfo book = new BookInfo(title, numPages, author, series);
-                    if(booksdb.insertNewBook(book)) {
-                        dos.writeUTF("Llibre afegit correctament.");
-                        dos.flush();
-                    } else {
-                        dos.writeUTF("Aquest llibre ja estava a la base de dades.");
-                        dos.flush();
-                    }
-
-                } catch (IOException ex) {
-                    System.err.println("Database error!");
+        private void addBook(ObjectInputStream ois) {
+            try {
+                BookInfo book = (BookInfo) ois.readObject();
+                if(booksdb.insertNewBook(book)) {
+                    dos.writeUTF("Llibre afegit correctament.");
+                    dos.flush();
+                } else {
+                    dos.writeUTF("Aquest llibre ja estava a la base de dades.");
+                    dos.flush();
                 }
+
+            } catch (IOException | ClassNotFoundException ex) {
+                System.err.println("Database error!");
+            }
         }
 
 
         private void listInfoFromOneBook(DataInputStream dis) {
-            try {
-                String title = dis.readUTF();
-                int numTitles = booksdb.searchBookByTitle(title);
-                boolean exists;
-                if(numTitles != -1) {
-                    exists = true;
-                    dos.writeBoolean(exists);
-                    dos.flush();
-                    BookInfo book = booksdb.readBookInfo(numTitles);
-                    dos.writeUTF(book.toString());
-                    dos.flush();
-                } else {
-                    exists = false;
-                    dos.writeBoolean(exists);
-                    dos.flush();
+            synchronized (booksdb) {
+                try {
+                    String title = dis.readUTF();
+                    int numTitles = booksdb.searchBookByTitle(title);
+                    boolean exists;
+                    if(numTitles != -1) {
+                        exists = true;
+                        dos.writeBoolean(exists);
+                        dos.flush();
+                        BookInfo book = booksdb.readBookInfo(numTitles);
+                        dos.writeUTF(book.toString());
+                        dos.flush();
+                    } else {
+                        exists = false;
+                        dos.writeBoolean(exists);
+                        dos.flush();
+                    }
+                } catch (IOException ex) {
+                    System.err.println("Database error!");
                 }
-            } catch (IOException ex) {
-                System.err.println("Database error!");
             }
         }
     }
 
     // Thread per enviar dades al client
-    private static void listTitles() {
+    private static void listTitles(DataOutputStream dos) {
+        synchronized (booksdb) {
+
             try {
                 int numBooks = booksdb.getNumBooks();
                 dos.writeInt(numBooks);
@@ -150,6 +150,7 @@ public class Server {
             } catch (IOException ex) {
                 System.err.println ("Database error!");
             }
+        }
     }
 
 }

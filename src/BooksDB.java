@@ -1,5 +1,6 @@
 import java.io.RandomAccessFile;
 import java.io.IOException;
+import client.BookInfo;
 
 public class BooksDB {
 

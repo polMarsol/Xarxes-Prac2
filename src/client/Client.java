@@ -29,19 +29,22 @@ public class Client {
     }
     private static class threadClientW implements Runnable {
         Socket s;
+        private final DataOutputStream dos;
+        private final DataInputStream dis;
+        private final ObjectOutputStream oos;
 
-        private threadClientW(Socket s) {
+        private threadClientW(Socket s) throws IOException {
             this.s = s;
+            this.dos = new DataOutputStream(s.getOutputStream());
+            this.oos = new ObjectOutputStream(s.getOutputStream());
+            this.dis = new DataInputStream(s.getInputStream());
         }
 
         public void run() {
             try {
                 InputStream consola = System.in;
                 BufferedReader d = new BufferedReader(new InputStreamReader(consola));
-                String entrada = "";
-                DataOutputStream dos = new DataOutputStream(s.getOutputStream());
-                DataInputStream dis = new DataInputStream(s.getInputStream());
-
+                String entrada;
                 while (true) {
                     printMenu();
                     entrada = d.readLine().trim();
@@ -55,7 +58,7 @@ public class Client {
                                 listInfoFromOneBook(dis, dos);
                                 break;
                             case 3:
-                                addBook(dis, dos);
+                                addBook(oos);
                                 break;
                             case 4:
                                 deleteBook(dis, dos);
@@ -96,19 +99,16 @@ public class Client {
             }
         }
 
-        private void addBook(DataInputStream dis, DataOutputStream dos) {
+        private void addBook(ObjectOutput oos) {
             try {
-                String in = dis.readUTF();
-                System.out.println(in);
                 BufferedReader d = new BufferedReader(new InputStreamReader(System.in));
+                System.out.println("Escriu el títol del llibre a afegir: ");
                 String titol = d.readLine();
                 while (titol == null || titol.isEmpty()) {
                     System.out.println ("El títol del llibre no pot ser buit.");
                     System.out.println ("Escriu el títol del llibre a afegir: ");
                     titol = d.readLine();
                 }
-                dos.writeUTF(titol);
-                dos.flush();
                 int pages = -1;
                 while (pages < 0) {
                     System.out.println("Introdueix el número de pàgines del llibre: ");
@@ -121,28 +121,21 @@ public class Client {
                         }
                     }
                 }
-                dos.writeInt(pages);
-                dos.flush();
-                String Sauthor = dis.readUTF();
-                System.out.println(Sauthor);
+
+                System.out.println("Escriu l'autor del llibre: (deixe-ho en blanc si és anònim): ");
                 String author = d.readLine();
                 if (author == null) {
                     author = "";
                 }
-                dos.writeUTF(author);
-                dos.flush();
-
-                String Sseries = dis.readUTF();
-                System.out.println(Sseries);
+                System.out.println("Especifica la sèrie (buida si un llibre solt): ");
                 String series = d.readLine();
                 if (series == null) {
                     series = "";
                 }
-                dos.writeUTF(series);
-                dos.flush();
-                String trobat = dis.readUTF();
-                System.out.println(trobat);
-
+                BookInfo book = new BookInfo(titol, pages, author, series);
+                oos.writeObject(book);
+                String trobar = dis.readUTF();
+                System.out.println(trobar);
             } catch (IOException e) {
                 e.printStackTrace();
             }
