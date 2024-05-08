@@ -9,7 +9,7 @@ import java.net.SocketException;
 public class Client {
     private static final int port = 1234;
     private static String host = "127.0.0.1"; //  Adreça IP del servidor
-    /*private static String host = "192.168.56.1";*/
+    /*private static String host = "192.168.68.101";*/
     public static void main(String[] args) {
         if (args.length > 0) {
             host = args[0]; // Si s'especifica una adreça IP com a argument
@@ -75,7 +75,8 @@ public class Client {
                             default:
                                 break;
                         }
-                    }
+                    } else
+                        System.err.println("Error d'opció de lectura.\n");
                 }
             } catch (SocketException e) {
                 System.err.println("Servidor no disponible.");
@@ -95,9 +96,9 @@ public class Client {
                 dos.flush();
                 boolean deleted = dis.readBoolean();
                 if(deleted){
-                    System.out.println("Llibre eliminat.");
+                    System.out.println("Llibre eliminat.\n");
                 } else {
-                    System.out.println("Llibre no trobat.");
+                    System.out.println("Llibre no trobat.\n");
                 }
             } catch (IOException ex) {
                 System.err.println("Database error.");
@@ -109,7 +110,7 @@ public class Client {
                 BufferedReader d = new BufferedReader(new InputStreamReader(System.in));
                 System.out.println("Escriu el títol del llibre a afegir: ");
                 String titol = d.readLine();
-                while (titol == null || titol.isEmpty()) {
+                while (titol == null || titol.trim().isEmpty()) {
                     System.out.println ("El títol del llibre no pot ser buit.");
                     System.out.println ("Escriu el títol del llibre a afegir: ");
                     titol = d.readLine();
@@ -140,7 +141,7 @@ public class Client {
                 BookInfo book = new BookInfo(titol, pages, author, series);
                 oos.writeObject(book);
                 String trobar = dis.readUTF();
-                System.out.println(trobar);
+                System.out.println(trobar + "\n");
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -153,21 +154,23 @@ public class Client {
             dos.writeUTF(title);
             dos.flush();
             boolean exists = dis.readBoolean();
-            if (!exists) {
-                System.out.println("Llibre no trobat.");
+            if (exists) {
+                int length = dis.readInt(); // Read the length of the byte array
+                byte[] bookBytes = new byte[length]; // Create a byte array of the correct length
+                dis.readFully(bookBytes); // Read the byte array
+                BookInfo book = BookInfo.fromBytes(bookBytes);
+                System.out.println(book+"\n");
             } else {
-                System.out.println("Llibre trobat.");
-                String bookInfo = dis.readUTF();
-                System.out.println(bookInfo);
+                System.out.println("Llibre no trobat.\n");
             }
         }
-
         private void listTitles(DataInputStream dis) throws IOException {
             int numLlibres = dis.readInt();
             for (int i = 0; i < numLlibres; i++) {
                 String titol = dis.readUTF();
                 System.out.println(titol);
             }
+            System.out.println("\n");
         }
 
         private int getOption(String entrada, DataOutputStream dos) throws IOException {
@@ -183,12 +186,12 @@ public class Client {
         }
     }
     private static void printMenu() {
-        System.out.println("");
         System.out.println ("Menú d'opcions:");
         System.out.println ("1 - Llista tots els títols.");
         System.out.println ("2 - Obté la informació d'un llibre.");
         System.out.println ("3 - Afegeix un llibre.");
         System.out.println ("4 - Elimina un llibre.");
         System.out.println ("5 - Sortir.");
+        System.out.println ("Escull una opció: ");
     }
 }

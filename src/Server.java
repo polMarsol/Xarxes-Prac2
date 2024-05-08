@@ -52,7 +52,7 @@ public class Server {
                             break;
                         case 2:
                             // Obté la informació d'un llibre
-                            listInfoFromOneBook(dis);
+                            listInfoFromOneBook(dis, dos);
                             break;
                         case 3:
                             addBook(ois);
@@ -94,10 +94,10 @@ public class Server {
 
 
         private void addBook(ObjectInputStream ois) {
-            synchronized (booksdb){
+            synchronized (booksdb) {
                 try {
                     BookInfo book = (BookInfo) ois.readObject();
-                    if(booksdb.insertNewBook(book)) {
+                    if (booksdb.insertNewBook(book)) {
                         dos.writeUTF("Llibre afegit correctament.");
                         dos.flush();
                     } else {
@@ -112,24 +112,21 @@ public class Server {
         }
 
 
-        private void listInfoFromOneBook(DataInputStream dis) {
+        private void listInfoFromOneBook(DataInputStream dis, DataOutputStream dos) {
             synchronized (booksdb) {
                 try {
                     String title = dis.readUTF();
-                    int numTitles = booksdb.searchBookByTitle(title);
-                    boolean exists;
-                    if(numTitles != -1) {
-                        exists = true;
-                        dos.writeBoolean(exists);
-                        dos.flush();
-                        BookInfo book = booksdb.readBookInfo(numTitles);
-                        dos.writeUTF(book.toString());
-                        dos.flush();
+                    int bookIndex = booksdb.searchBookByTitle(title);
+                    if (bookIndex != -1) {
+                        dos.writeBoolean(true);
+                        BookInfo book = booksdb.readBookInfo(bookIndex);
+                        byte[] bookBytes = book.toBytes();
+                        dos.writeInt(bookBytes.length); // Send the length of the byte array
+                        dos.write(bookBytes); // Send the byte array
                     } else {
-                        exists = false;
-                        dos.writeBoolean(exists);
-                        dos.flush();
+                        dos.writeBoolean(false);
                     }
+                    dos.flush();
                 } catch (IOException ex) {
                     System.err.println("Operació cancel·lada.");
                 }
