@@ -16,34 +16,14 @@ public class Server {
                 Socket s = ss.accept(); // Acceptar la connexió del client
                 // Iniciar fils per gestionar la comunicació amb el client
                 Thread tR = new Thread(new threadServerR(s));
-                Thread tH = new Thread(new HeartbeatThread(new DataOutputStream(s.getOutputStream()))); // Nuevo hilo para el heartbeat
                 System.err.println("Connexió acceptada.");
                 tR.start(); // Iniciar-los
-                tH.start();
             }
         } catch (IOException e) {
             System.err.println("Servidor no disponible. Ja està en ús.");
         }
     }
-    private static class HeartbeatThread implements Runnable {
-        private final DataOutputStream dos;
 
-        public HeartbeatThread(DataOutputStream dos) {
-            this.dos = dos;
-        }
-
-        @Override
-        public void run() {
-            try {
-                while (true) {
-                    dos.writeUTF("HEARTBEAT");
-                    Thread.sleep(1000); // Enviar un heartbeat cada 5 segundos
-                }
-            } catch (IOException | InterruptedException e) {
-                // El servidor se ha cerrado o ha ocurrido un error
-            }
-        }
-    }
     // Thread per escoltar al client
     // Thread per escoltar al client
 // Thread per escoltar al client
@@ -96,7 +76,7 @@ public class Server {
 
             } catch (IOException e) {
                 System.out.println("Connexió tancada.");
-/*                System.exit(0); // Sortir del programa*/
+                /*                System.exit(0); // Sortir del programa*/
             }
         }
 
@@ -107,25 +87,27 @@ public class Server {
                     boolean borrat = booksdb.deleteByTitle(title);
                     dos.writeBoolean(borrat);
                 } catch (IOException ex) {
-                    System.err.println("Database error!");
+                    System.err.println("Operació cancel·lada.");
                 }
             }
         }
 
 
         private void addBook(ObjectInputStream ois) {
-            try {
-                BookInfo book = (BookInfo) ois.readObject();
-                if(booksdb.insertNewBook(book)) {
-                    dos.writeUTF("Llibre afegit correctament.");
-                    dos.flush();
-                } else {
-                    dos.writeUTF("Aquest llibre ja estava a la base de dades.");
-                    dos.flush();
-                }
+            synchronized (booksdb){
+                try {
+                    BookInfo book = (BookInfo) ois.readObject();
+                    if(booksdb.insertNewBook(book)) {
+                        dos.writeUTF("Llibre afegit correctament.");
+                        dos.flush();
+                    } else {
+                        dos.writeUTF("Aquest llibre ja estava a la base de dades.");
+                        dos.flush();
+                    }
 
-            } catch (IOException | ClassNotFoundException ex) {
-                System.err.println("Database error!");
+                } catch (IOException | ClassNotFoundException ex) {
+                    System.err.println("Operació cancel·lada.");
+                }
             }
         }
 
@@ -149,7 +131,7 @@ public class Server {
                         dos.flush();
                     }
                 } catch (IOException ex) {
-                    System.err.println("Database error!");
+                    System.err.println("Operació cancel·lada.");
                 }
             }
         }
@@ -168,7 +150,7 @@ public class Server {
                 }
                 dos.flush();
             } catch (IOException ex) {
-                System.err.println ("Database error!");
+                System.err.println ("Error al llegir la base de dades.");
             }
         }
     }
