@@ -94,6 +94,7 @@ public class Client {
                 String title = d.readLine();
                 dos.writeUTF(title);
                 dos.flush();
+                //Llegir la resposta del servidor de si s'ha eliminat o no
                 boolean deleted = dis.readBoolean();
                 if(deleted){
                     System.out.println("Llibre eliminat.\n");
@@ -128,16 +129,19 @@ public class Client {
                     }
                 }
 
-                System.out.println("Escriu l'autor del llibre: (deixe-ho en blanc si és anònim): ");
+                //Demanen a l'usuari l'autor i la sèrie del llibre
+                System.out.println("Escriu l'autor del llibre: (deixa-ho en blanc si és anònim): ");
                 String author = d.readLine();
                 if (author == null) {
                     author = "";
                 }
-                System.out.println("Especifica la sèrie (buida si un llibre solt): ");
+                System.out.println("Especifica la sèrie (deixa-ho en blanc si és un llibre solt): ");
                 String series = d.readLine();
                 if (series == null) {
                     series = "";
                 }
+
+                //Empaqueta el llibre i l'envia al servidor
                 BookInfo book = new BookInfo(titol, pages, author, series);
                 oos.writeObject(book);
                 String trobar = dis.readUTF();
@@ -153,18 +157,21 @@ public class Client {
             String title = d.readLine();
             dos.writeUTF(title);
             dos.flush();
+            //Llegir la resposta del servidor sobre si el llibre existeix o no
             boolean exists = dis.readBoolean();
             if (exists) {
-                int length = dis.readInt(); // Read the length of the byte array
-                byte[] bookBytes = new byte[length]; // Create a byte array of the correct length
-                dis.readFully(bookBytes); // Read the byte array
+                int length = dis.readInt();
+                byte[] bookBytes = new byte[length];
+                dis.readFully(bookBytes);
                 BookInfo book = BookInfo.fromBytes(bookBytes);
                 System.out.println(book+"\n");
             } else {
                 System.out.println("Llibre no trobat.\n");
             }
         }
+
         private void listTitles(DataInputStream dis) throws IOException {
+            //Llegir el nombre de llibres per poder imprimir-los
             int numLlibres = dis.readInt();
             for (int i = 0; i < numLlibres; i++) {
                 String titol = dis.readUTF();
@@ -173,6 +180,7 @@ public class Client {
             System.out.println("\n");
         }
 
+        //Demana a l'usuari quina opció del menú vol escollir
         private int getOption(String entrada, DataOutputStream dos) throws IOException {
             try {
                 int opcio = Integer.parseInt(entrada);
@@ -185,6 +193,7 @@ public class Client {
             }
         }
     }
+    //Printa el menú d'opcions per a l'usuari
     private static void printMenu() {
         System.out.println ("Menú d'opcions:");
         System.out.println ("1 - Llista tots els títols.");

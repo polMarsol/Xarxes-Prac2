@@ -25,8 +25,6 @@ public class Server {
     }
 
     // Thread per escoltar al client
-    // Thread per escoltar al client
-// Thread per escoltar al client
     private static class threadServerR implements Runnable {
         private final Socket s;
         private final DataOutputStream dos;
@@ -76,15 +74,16 @@ public class Server {
 
             } catch (IOException e) {
                 System.out.println("Connexió tancada.");
-                /*                System.exit(0); // Sortir del programa*/
             }
         }
 
         private void deleteBook(DataInputStream dis, DataOutputStream dos) {
+            //Utilizem synchronized per evitar problemes de concurrencia
             synchronized (booksdb) {
                 try {
                     String title = dis.readUTF();
                     boolean borrat = booksdb.deleteByTitle(title);
+                    //Envia al codi del client si s'ha eliminat o no
                     dos.writeBoolean(borrat);
                 } catch (IOException ex) {
                     System.err.println("Operació cancel·lada.");
@@ -94,8 +93,10 @@ public class Server {
 
 
         private void addBook(ObjectInputStream ois) {
+            //Utilizem synchronized per evitar problemes de concurrencia
             synchronized (booksdb) {
                 try {
+                    //Rebem el llibre i evaluem si ja estava a la base de dades
                     BookInfo book = (BookInfo) ois.readObject();
                     if (booksdb.insertNewBook(book)) {
                         dos.writeUTF("Llibre afegit correctament.");
@@ -113,6 +114,7 @@ public class Server {
 
 
         private void listInfoFromOneBook(DataInputStream dis, DataOutputStream dos) {
+            //Utilizem synchronized per evitar problemes de concurrencia
             synchronized (booksdb) {
                 try {
                     String title = dis.readUTF();
@@ -121,8 +123,8 @@ public class Server {
                         dos.writeBoolean(true);
                         BookInfo book = booksdb.readBookInfo(bookIndex);
                         byte[] bookBytes = book.toBytes();
-                        dos.writeInt(bookBytes.length); // Send the length of the byte array
-                        dos.write(bookBytes); // Send the byte array
+                        dos.writeInt(bookBytes.length);
+                        dos.write(bookBytes);
                     } else {
                         dos.writeBoolean(false);
                     }
@@ -136,8 +138,8 @@ public class Server {
 
     // Thread per enviar dades al client
     private static void listTitles(DataOutputStream dos) {
+        //Utilizem synchronized per evitar problemes de concurrencia
         synchronized (booksdb) {
-
             try {
                 int numBooks = booksdb.getNumBooks();
                 dos.writeInt(numBooks);
