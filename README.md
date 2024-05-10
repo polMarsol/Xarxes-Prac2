@@ -2,7 +2,7 @@
 
 ## Realització de la Pràctica
 
-- Pràctica realitzada eb grup (2 integrants)
+- Pràctica realitzada en grup (2 integrants)
 
 ## Integrants
 
